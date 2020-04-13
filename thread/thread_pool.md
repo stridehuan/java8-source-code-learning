@@ -2,7 +2,14 @@
 
 ## ThreadPoolExecutor
 默认的线程池实现类
-### 重要属性说明
+### 重要属性和方法说明
+- 属性
+   - [ctl属性](#ctl)
+- 方法
+   - [execute方法](#java.util.concurrent.ThreadPoolExecutor#execute(Runnable command))
+   - [addWorker方法](#java.util.concurrent.ThreadPoolExecutor#addWorker(Runnable firstTask, boolean core) )
+- 内部类
+
 #### ctl
 ``` java
 /**
@@ -32,6 +39,99 @@ private static int workerCountOf(int c)  { return c & CAPACITY; } // 获得有�
 private static int ctlOf(int rs, int wc) { return rs | wc; } // 合并线程池状态和有效线程数
 ```
 
+#### java.util.concurrent.ThreadPoolExecutor#execute(Runnable command)
+作用：将一个Runnable对象丢到线程池去执行
+核心代码列出了execute方法执行时可能走的3个步骤：
+``` java
+// 1. workerCount小于corePoolSize，说明可以直接为command创建一个worker
+int c = ctl.get();
+if (workerCountOf(c) < corePoolSize) {
+    if (addWorker(command, true))
+        return;
+    c = ctl.get();
+}
+// 2. workerCount大于等于corePoolSize，或者上一步创建worker失败，需要将command放到workQueue
+if (isRunning(c) && workQueue.offer(command)) {
+    int recheck = ctl.get();
+    if (! isRunning(recheck) && remove(command))
+        reject(command);
+    else if (workerCountOf(recheck) == 0)
+        addWorker(null, false);
+}
+// 3. 如果未能将command放入workQueue（可能是队列满了，或者上一步遇到了其它异常），尝试为command创建额外的worker，如果创建额外的worker失败，抛弃command
+else if (!addWorker(command, false))
+    reject(command);
+```
+
+#### java.util.concurrent.ThreadPoolExecutor#addWorker(Runnable firstTask, boolean core) 
+作用：尝试根据firstTask生成一个worker并运行worker中的线程对象
+整个方法分两个阶段
+
+第一阶段，尝试自增workerCount，确保workerCount自增成功，且workerCount不能超过workerCount的上限
+``` java
+retry:
+for (;;) {
+    int c = ctl.get();
+    int rs = runStateOf(c);
+
+    // Check if queue empty only if necessary.
+    if (rs >= SHUTDOWN &&
+            ! (rs == SHUTDOWN &&
+                    firstTask == null &&
+                    ! workQueue.isEmpty()))
+        return false;
+
+    // 不断轮询尝试完成workerCount的自增，如果自增成功，跳出大循环，如果发现workerCount已经达到上限了，返回false，如果自增失败，继续当前小循环
+    for (;;) {
+        int wc = workerCountOf(c);
+        if (wc >= CAPACITY ||
+                wc >= (core ? corePoolSize : maximumPoolSize))
+            return false;
+        if (compareAndIncrementWorkerCount(c))
+            break retry;
+        c = ctl.get();  // Re-read ctl
+        if (runStateOf(c) != rs)
+            continue retry;
+        // else CAS failed due to workerCount change; retry inner loop
+    }
+}
+```
+
+第二阶段，生成worker，将worker添加到workers中，启动worker中的线程
+``` java
+w = new Worker(firstTask);
+final Thread t = w.thread;
+if (t != null) {
+    final ReentrantLock mainLock = this.mainLock;
+    mainLock.lock();
+    try {
+        // Recheck while holding lock.
+        // Back out on ThreadFactory failure or if
+        // shut down before lock acquired.
+        int rs = runStateOf(ctl.get());
+
+        if (rs < SHUTDOWN ||
+                (rs == SHUTDOWN && firstTask == null)) {
+            if (t.isAlive()) // precheck that t is startable
+                throw new IllegalThreadStateException();
+            workers.add(w);
+            int s = workers.size();
+            if (s > largestPoolSize)
+                largestPoolSize = s;
+            workerAdded = true;
+        }
+    } finally {
+        mainLock.unlock();
+    }
+    if (workerAdded) {
+        t.start();
+        workerStarted = true;
+    }
+}
+```
+
+#### private final class Worker
+构造方法
 
 
 
