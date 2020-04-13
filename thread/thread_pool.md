@@ -6,8 +6,8 @@
 - 属性
    - [ctl属性](#ctl)
 - 方法
-   - [execute方法](#java.util.concurrent.ThreadPoolExecutor.execute)
-   - [addWorker方法](#java.util.concurrent.ThreadPoolExecutor.addWorker)
+   - [execute方法](#execute)
+   - [addWorker方法](#addWorker)
 - 内部类
 
 #### ctl
@@ -39,7 +39,8 @@ private static int workerCountOf(int c)  { return c & CAPACITY; } // 获得有�
 private static int ctlOf(int rs, int wc) { return rs | wc; } // 合并线程池状态和有效线程数
 ```
 
-#### java.util.concurrent.ThreadPoolExecutor.execute
+#### execute
+java.util.concurrent.ThreadPoolExecutor.execute
 作用：将一个Runnable对象丢到线程池去执行
 核心代码列出了execute方法执行时可能走的3个步骤：
 ``` java
@@ -63,7 +64,8 @@ else if (!addWorker(command, false))
     reject(command);
 ```
 
-#### java.util.concurrent.ThreadPoolExecutor.addWorker
+#### addWorker
+ava.util.concurrent.ThreadPoolExecutor.addWorker
 作用：尝试根据firstTask生成一个worker并运行worker中的线程对象
 整个方法分两个阶段
 
@@ -130,8 +132,25 @@ if (t != null) {
 }
 ```
 
-#### private final class Worker
+#### Worker
+继承关系
+``` java
+private final class Worker extends AbstractQueuedSynchronizer implements Runnable
+```
 构造方法
+``` java
+Worker(Runnable firstTask) {
+    setState(-1); // inhibit interrupts until runWorker
+    this.firstTask = firstTask;
+    this.thread = getThreadFactory().newThread(this);
+}
+```
+重写的run方法：
+``` java
+public void run() {
+    runWorker(this);
+}
+```
 
 
 
