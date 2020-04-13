@@ -6,8 +6,8 @@
 - 属性
    - [ctl属性](#ctl)
 - 方法
-   - [execute方法](#java.util.concurrent.ThreadPoolExecutor.execute(Runnable command))
-   - [addWorker方法](#java.util.concurrent.ThreadPoolExecutor.addWorker(Runnable firstTask, boolean core) )
+   - [execute方法](#java.util.concurrent.ThreadPoolExecutor.execute)
+   - [addWorker方法](#java.util.concurrent.ThreadPoolExecutor.addWorker)
 - 内部类
 
 #### ctl
@@ -39,7 +39,7 @@ private static int workerCountOf(int c)  { return c & CAPACITY; } // 获得有�
 private static int ctlOf(int rs, int wc) { return rs | wc; } // 合并线程池状态和有效线程数
 ```
 
-#### java.util.concurrent.ThreadPoolExecutor.execute(Runnable command)
+#### java.util.concurrent.ThreadPoolExecutor.execute
 作用：将一个Runnable对象丢到线程池去执行
 核心代码列出了execute方法执行时可能走的3个步骤：
 ``` java
@@ -63,7 +63,7 @@ else if (!addWorker(command, false))
     reject(command);
 ```
 
-#### java.util.concurrent.ThreadPoolExecutor.addWorker(Runnable firstTask, boolean core) 
+#### java.util.concurrent.ThreadPoolExecutor.addWorker
 作用：尝试根据firstTask生成一个worker并运行worker中的线程对象
 整个方法分两个阶段
 
